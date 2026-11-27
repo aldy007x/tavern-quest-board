@@ -1,0 +1,3 @@
+# Local toolchain, keybase and wallet material — never commit
+tools/
+*.tar.gz
