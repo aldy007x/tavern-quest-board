@@ -91,8 +91,52 @@ approver sends `MsgEnablePackage` after the GPAS checks pass.
 
 ## Live lifecycle demo (PostQuest → AcceptQuest → CompleteQuest)
 
-_Pending package enablement — see above. Tx hashes and before/after
-balances will be recorded here once the realm is callable._
+**BLOCKED on package enablement (external approver) — not on anything in
+this project.** Evidence: GPAS verdict "passed" at 2026-11-27T01:23:27Z;
+`vm/qrender` polled every minute from 01:27Z to 01:44Z (18 checks) plus a
+final check at 01:44:47Z — still "package not found", gnoweb still 404.
+Packages passed earlier the same morning (`.../verification` 00:20Z,
+`.../bench` 01:14Z) were still parked too, so the Onyx approver is simply
+batching slowly today; yesterday's comparable realm (`r/g1q5ra.../tavernboard`,
+passed 2026-11-26T17:36Z) is live now, so enablement does land.
+
+Balances at the time of writing (post-deploy):
+
+| Account | Balance |
+|---|---|
+| tavern | 49,900,000 ugnot (50,000,000 − 100,000 deploy gas fee) |
+| adventurer | 50,000,000 ugnot |
+
+Ready-to-run commands for the moment the realm enables (relay must be up,
+see above; deadline = now + 1 day in unix seconds):
+
+```sh
+export PATH="$HOME/workspace/gnome-tavern/tools/bin:$PATH"
+KB=$HOME/workspace/gnome-tavern/tools/keybase
+ADDR=g13fd5s4h9ap0cggkgxnkqf0wawm9ew8x2kvnlv5
+PKG="gno.land/r/$ADDR/questboard"
+REMOTE=http://127.0.0.1:26657
+
+# 1. tavern posts quest #1 with a 5 GNOT escrowed reward
+printf 'questboard-tavern\n' | gnokey maketx call -home "$KB" -insecure-password-stdin \
+  -pkgpath "$PKG" -func PostQuest \
+  -args "Slay the spam goblins" -args "Clear the tavern cellar of spam goblins." \
+  -args 5000000 -args <deadline-unix> -send 5000000ugnot \
+  -gas-fee 2000ugnot -gas-wanted 2000000 -chainid onyx-1 -remote $REMOTE tavern
+
+# 2. adventurer accepts quest #1
+printf 'questboard-tavern\n' | gnokey maketx call -home "$KB" -insecure-password-stdin \
+  -pkgpath "$PKG" -func AcceptQuest -args 1 \
+  -gas-fee 2000ugnot -gas-wanted 2000000 -chainid onyx-1 -remote $REMOTE adventurer
+
+# 3. tavern completes quest #1 — escrow pays the adventurer 5,000,000 ugnot
+printf 'questboard-tavern\n' | gnokey maketx call -home "$KB" -insecure-password-stdin \
+  -pkgpath "$PKG" -func CompleteQuest -args 1 \
+  -gas-fee 2000ugnot -gas-wanted 2000000 -chainid onyx-1 -remote $REMOTE tavern
+
+# verify: gnokey query bank/balances/<addr> -remote $REMOTE  (both accounts)
+# and the board render: gnokey query vm/qrender -data "$PKG:" -remote $REMOTE
+```
 
 ## GitHub repo
 
